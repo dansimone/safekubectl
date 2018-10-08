@@ -43,25 +43,27 @@ find .
 
 ## List Available Clusters
 
-List the clusters available to Safekubectl with:
+Running safekubectl with no arguments will display a drop-down menu showing all available clusters.  From here,
+you can interactively chose one to connect to and hit Enter.
 
 ```
-safekubectl -c list
+safekubectl
 
-Available Clusters:
-cluster1
-cluster2
-cluster3
-clusterA
-myCluster
+Select the cluster to connect to:
+ ❯ cluster1
+   cluster2
+   cluster3
+   clusterA
+   myCluster
 ```
 
 ## Connect to a Cluster
 
-Connect to a cluster (for example, "cluster1") with:
+A cluster can be connected to by either selecting it from the drop-down above, or but running safekubectl with the
+`-cluster` paramater:
 
 ```
-safekubectl -c connect -k cluster1
+safekubectl -cluster cluster1
 ```
 
 This creates a shell indicating the cluster name, within which you can interact with cluser using regular kubectl

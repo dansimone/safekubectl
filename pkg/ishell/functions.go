@@ -1,9 +1,5 @@
 package ishell
 
-import (
-	"os"
-)
-
 func exitFunc(c *Context) {
 	c.Stop()
 }
@@ -39,9 +35,6 @@ func addDefaultFuncs(s *Shell) {
 }
 
 func interruptFunc(c *Context, count int, line string) {
-	if count >= 2 {
-		c.Println("Interrupted")
-		os.Exit(1)
-	}
-	c.Println("Input Ctrl-c once more to exit")
+	// Custom change for Safekubectl
+	c.Stop()
 }

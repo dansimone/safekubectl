@@ -6,24 +6,17 @@ import (
 	"fmt"
 	"os"
 	"log"
-	"github.com/fatih/color"
 	"github.com/dansimone/safekubectl/pkg/safekubectl"
+	"github.com/dansimone/safekubectl/pkg/ishell"
 )
 
-var bold = color.New(color.Bold)
-
-const ListCommand = "list"
-const ConnectCommand = "connect"
-const HelpCommand = "help"
-
 func main() {
-	var command, clusterName, rootDir string
+	var clusterName, rootDir string
 
 	flag.Usage = func() {
-		c := color.New(color.Bold).Add(color.Underline)
+		c := safekubectl.GetHighlightColor()
 		c.Printf("Safekubectl:")
-		c = color.New(color.Bold)
-		c.Printf(" The kubectl wrapper for safe execution of commands against your many Kubernetes clusters.\n\n")
+		fmt.Printf(" The kubectl wrapper for safe execution of commands against your many Kubernetes clusters.\n\n")
 		fmt.Printf("Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 	}
@@ -34,41 +27,39 @@ func main() {
 		flag.Usage()
 		log.Fatal(err)
 	}
-	flag.StringVar(&command, "c", "", fmt.Sprintf("Command to run, either \"%s\" or \"%s\"", ListCommand, ConnectCommand))
-	flag.StringVar(&clusterName, "k", "", "Name of the cluster to connect to")
+	flag.StringVar(&clusterName, "cluster", "", "Name of the cluster to connect to")
 	flag.StringVar(&rootDir, "rootDir", fmt.Sprintf("%s/.safekubectl", usr.HomeDir), "Safekubectl home directory")
 	flag.Parse()
 
-	if command == "" {
-		flag.Usage()
+	safekubectl := safekubectl.NewSafeKubectl(rootDir)
+	clusterNames := safekubectl.ListClusters()
+	if len(clusterNames) == 0 {
+		fmt.Printf("No clusters found.  Please create at least one directory under %s containing a kubeconfig file.\n", rootDir)
 		os.Exit(1)
 	}
 
-	safekubectl := safekubectl.NewSafeKubectl(rootDir)
-	if command == ListCommand {
-		clusterNames := safekubectl.ListClusters()
-		if len(clusterNames) == 0 {
-			c := color.New(color.Bold)
-			c.Printf("No clusters found.  Please create at least one directory under %s containing a kubeconfig file.\n", rootDir)
-		} else {
-			c := color.New(color.Bold).Add(color.Underline)
-			c.Println("Available Clusters:")
-			for _, clusterName := range clusterNames {
-				fmt.Println(clusterName)
+	// Prompt for cluster selection if cluster not specified
+	if clusterName == "" {
+		shell := ishell.New()
+		for {
+			choice := shell.MultiChoice(clusterNames, "Select the cluster to connect to:")
+			if choice < 0 || choice >= len(clusterNames) {
+				os.Exit(0)
+			}
+			clusterName = clusterNames[choice]
+
+			err = safekubectl.ConnectToCluster(clusterName)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
 			}
 		}
-	} else if command == ConnectCommand {
-		if clusterName == "" {
-			flag.Usage()
-			os.Exit(1)
-		}
+
+	} else {
 		err = safekubectl.ConnectToCluster(clusterName)
 		if err != nil {
-			c := color.New(color.Bold)
-			c.Println(err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
-	} else {
-		flag.Usage()
-		os.Exit(1)
 	}
 }
