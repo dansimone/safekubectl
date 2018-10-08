@@ -15,7 +15,8 @@ with added protections that make it harder to make a mistake.
 
 ## Open Issues
 
-* After executing each command, the first character entered into stdin is lost and needs to be re-entered by the user.
+* After executing a `logs` or `exec` command, the first character entered into stdin on the _next_ command is lost
+and needs to be re-entered by the user.
 
 # Installing
 
