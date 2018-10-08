@@ -288,34 +288,51 @@ func (s *Shell) executeKubectl(cmd []string) (error) {
 	}
 	command := exec.Command(kubectl, cmd...)
 
-	// Start the command within a pty
-	ptmx, err := pty.Start(command)
-	defer func() {
-		_ = ptmx.Close()
-	}()
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGWINCH)
-	go func() {
-		for range ch {
-			if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
-				log.Printf("error resizing pty: %s", err)
+	// Temporary hack around the issue where the pty capture loses the first character of user input after the kubectl
+	// command is executed.  For now, we only use a pty capture for the specific commands where it's necessary.
+	if usePtyForKubectl(cmd) {
+
+		// Start the command within a pty
+		ptmx, err := pty.Start(command)
+		defer func() {
+			_ = ptmx.Close()
+		}()
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGWINCH)
+
+		go func() {
+			for range ch {
+				if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
+					log.Printf("error resizing pty: %s", err)
+				}
 			}
+		}()
+		ch <- syscall.SIGWINCH
+		oldState, err := terminal.MakeRaw(int(os.Stdin.Fd()))
+		if err != nil {
+			panic(err)
 		}
-	}()
-	ch <- syscall.SIGWINCH
-	oldState, err := terminal.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
+		defer func() { _ = terminal.Restore(int(os.Stdin.Fd()), oldState) }()
+
+		go func() { _, _ = io.Copy(ptmx, os.Stdin) }()
+
+		_, _ = io.Copy(os.Stdout, ptmx)
+	} else {
+		command.Stdout = os.Stdout
+		command.Stderr = os.Stderr
+		command.Run()
 	}
-	defer func() { _ = terminal.Restore(int(os.Stdin.Fd()), oldState) }()
-
-	//execCommand := "exec"
-	//if cmd[0] == execCommand || (len(cmd) > 1 && cmd[1] == execCommand) {
-	go func() { _, _ = io.Copy(ptmx, os.Stdin) }()
-	//}
-
-	_, _ = io.Copy(os.Stdout, ptmx)
 	return err
+}
+
+// Whether or not to use a pty capture for the given kubectl command.  This routine is a temporary hack
+// around the issue where the pty capture loses the first character of user input after the kubectl
+// command is executed.  For now, we only use a pty capture for the specific commands where it's necessary.
+func usePtyForKubectl(kubectlArgs []string) (bool) {
+	if len(kubectlArgs) == 0 {
+		return false
+	}
+	return kubectlArgs[0] == "exec" || kubectlArgs[0] == "logs"
 }
 
 func (s *Shell) readLine() (line string, err error) {
