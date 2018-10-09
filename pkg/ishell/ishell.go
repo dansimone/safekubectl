@@ -260,7 +260,7 @@ func (s *Shell) handleCommand(str []string) (bool, error) {
 		}
 	}
 
-	// Custom execution for safekubctl
+	// Custom change for Safekubctl
 	err := s.executeKubectl(str)
 	return true, err
 }

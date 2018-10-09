@@ -45,13 +45,15 @@ func (s *Safekubectl) ConnectToCluster(clusterName string) (error) {
 		}
 	}
 	if !found {
-		return errors.New(fmt.Sprintf("Cluster %s not found\n", clusterName))
+		return errors.New(fmt.Sprintf("Cluster %s not found", clusterName))
 	}
 
 	// Launch iShell
 	shell := ishell.New()
 	shell.KubeConfig(fmt.Sprintf("%s/%s/kubeconfig", s.clusterRootDir, clusterName))
-	shell.SetPrompt(fmt.Sprintf("\033[1m%s> \033[m", clusterName))
+
+	colorFunc := GetHighlightColor().SprintFunc()
+	shell.SetPrompt(colorFunc(fmt.Sprintf("%s> ", clusterName)))
 	shell.SetHistoryPath(fmt.Sprintf("%s/%s/.safekubectl_history", s.clusterRootDir, clusterName))
 	shell.Run()
 	return nil

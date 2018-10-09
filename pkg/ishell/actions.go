@@ -162,6 +162,9 @@ func (s *shellActionsImpl) ShowPagedReader(r io.Reader) error {
 
 func (s *shellActionsImpl) Stop() {
 	s.stop()
+
+	// Custom change for Safekubectl
+	s.active = false
 }
 
 func (s *shellActionsImpl) HelpText() string {
